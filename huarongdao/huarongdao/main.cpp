@@ -2,56 +2,321 @@
 #include <iostream>
 
 using namespace sf;
+const int w = 263;
+void  initSpriteBlockers(Sprite blockers[])
+{
+    blockers[1].setTextureRect(IntRect(0, 0, w, w * 2)); // Zhang Fei
+    blockers[2].setTextureRect(IntRect(w, 0, w * 2, w * 2)); //Cao Cao
+    blockers[3].setTextureRect(IntRect(w * 3, 0, w, w * 2)); // Zhao Yun
+    blockers[4].setTextureRect(IntRect(0, w * 2, w, w * 2)); // Mao Chao
+    blockers[5].setTextureRect(IntRect(w, w * 2, w * 2, w)); // Guan Yu
+    blockers[6].setTextureRect(IntRect(w * 3, w * 2, w, w * 2)); // Huang Zhong
+    blockers[7].setTextureRect(IntRect(0, w * 4, w, w));  //soldier1 
+    blockers[8].setTextureRect(IntRect(0, w * 4, w, w));  // soldier2
+    blockers[9].setTextureRect(IntRect(0, w * 4, w, w));  // soldier3
+    blockers[10].setTextureRect(IntRect(0, w * 4, w, w)); // soldier4
+    blockers[11].setTextureRect(IntRect(w, w * 4, w, w)); // blank1
+    blockers[12].setTextureRect(IntRect(w, w * 4, w, w)); // blank2
+}
+
+void initBoard(int board[4][5], Sprite blockers[])
+{
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 5; ++j)
+            board[i][j] = 0;
+    board[0][0] = 1;
+    board[1][0] = 2;
+    board[3][0] = 3;
+    board[0][2] = 4;
+    board[1][2] = 5;
+    board[3][2] = 6;
+    board[1][3] = 7;
+    board[2][3] = 8;
+    board[0][4] = 9;
+    board[1][4] = 11;
+    board[2][4] = 12;
+    board[3][4] = 10;
+}
+
+// which corner
+// 0 : top left
+// 1: top right
+// 2: bottom left
+// 3: bottom right
+int getBlockerCorner(Sprite& blocker, int x, int y)
+{
+    Vector2f pos = blocker.getPosition();
+    int toLeft = x - pos.x ;
+    int toRight = blocker.getTextureRect().width + pos.x - x;
+    int toTop = y - pos.y;
+    int toBottom = blocker.getTextureRect().height + pos.y - y;
+    std::cout << "toLeft:" << toLeft << std::endl;
+    std::cout << "toRight:" << toRight << std::endl;
+    std::cout << "toTop:" << toTop << std::endl;
+    std::cout << "toBottom:" << toBottom << std::endl;
+    if (toLeft < toRight)
+    {
+        if (toTop < toBottom)
+            return 0;
+        else
+            return 2;
+    }
+    else
+    {
+        if (toTop < toBottom)
+            return 1;
+        else
+            return 3;
+    }
+    return 0;
+}
+
+int getBlockerIndex(int board[4][5], Sprite blockers[], int x, int y)
+{
+    if (board[x][y] > 0)
+        return board[x][y];
+    if (x > 0)
+    {
+        int i = board[x - 1][y];
+        if (i > 0)
+        {
+            int i1 = blockers[i].getTextureRect().width /w;
+            std::cout << "i=" << i << "  width=" << i1 << std::endl;
+            if (i1 > 1 && board[x - 1][y] > 0)
+            {
+                std::cout << "x return block index=" << board[x - 1][y] << std::endl;
+                return board[x - 1][y];
+            }
+        }
+    }
+    if (y > 0)
+    {
+        int i = board[x ][y - 1];
+        if (i > 0)
+        {
+            int i1 = blockers[i].getTextureRect().height / w;
+            std::cout << "i=" << i << "  height=" << i1 << std::endl;
+            if (i1 > 1 && board[x ][y -1] > 0)
+            {
+                std::cout << " y return block index=" << board[x ][y -1] << std::endl;
+                return board[x ][y - 1];
+            }
+        }
+    }
+    if (x> 0 && y > 0)
+    {
+        int i = board[x-1][y - 1];
+        if (i > 0)
+        {
+            int i1 = blockers[i].getTextureRect().width / w;
+            int j1 = blockers[i].getTextureRect().height / w;
+            if (i1 > 1 && j1> 0 && board[x - 1][y - 1] > 0)
+            {
+                std::cout << " xy return block index=" << board[x -1][y - 1] << std::endl;
+                return board[x-1][y - 1];
+            }
+        }
+    }
+
+    return 0;
+}
+
+bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
+{
+    Vector2f pos = blockers[blockIndex].getPosition();
+    int x = pos.x / w;
+    int y = pos.y / w;
+    std::cout << "x=" << x << "  y = " << y << std::endl;
+    int w1 = blockers[blockIndex].getTextureRect().width / w;
+    int h = blockers[blockIndex].getTextureRect().height / w;
+    std::cout << "w1=" << w1 << "  h = " << h << std::endl;
+
+    // moving down
+    if (y + h - 1 < 4)
+    {
+        if (w1 == 1)
+        {
+            bool force_move_up = false;
+            if (y > 0 && (board[x][y - 1] == 11 || board[x][y - 1] == 12))
+            {
+                // can also move up
+                force_move_up = (corner == 0 || corner == 1);
+            }
+            if (!force_move_up && (board[x][y + h] == 11 || board[x][y + h] == 12))
+            {
+                // can move down 
+                std::cout << "Can move down." << std::endl;
+                int tmp = board[x][y + h];
+                board[x][y + 1] = board[x][y];
+                board[x][y] = tmp;
+                if (h == 2)
+                    board[x][y + h] = 0;
+                return true;
+            }
+        }
+        if (w1 == 2)
+        {
+            if ((board[x][y + h] == 11 || board[x][y + h] == 12) &&
+                (board[x+ 1][y + h] == 11 || board[x+1][y + h] == 12) )
+            {
+                // can move down 
+                std::cout << "Can move 2 down." << std::endl;
+                int tmp = board[x][y + h];
+                int tmp1 = board[x + 1][y + h];
+                board[x][y + 1] = board[x][y];
+                board[x+1][y + h] = 0;
+                board[x][y] = tmp;
+                board[x + 1][y] = tmp1;
+
+                if(h == 2)
+                    board[x ][y + h] = 0;
+                return true;
+            }
+        }
+    }
+
+    // moving up
+    if (y > 0)
+    {
+        if (w1 == 1)
+        {
+            if (board[x][y - 1] == 11 || board[x][y - 1] == 12)
+            {
+                // can move up 
+                std::cout << "Can move up." << std::endl;
+                int tmp = board[x][y - 1];
+                board[x][y - 1] = board[x][y];
+                board[x][y + h -1] = tmp;
+                if (h == 2)
+                    board[x][y] = 0;
+                return true;
+            }
+        }
+
+        if (w1 == 2)
+        {
+            if ((board[x][y - 1] == 11 || board[x][y - 1] == 12) &&
+                (board[x + 1][y - 1] == 11 || board[x + 1][y -1 ] == 12))
+            {
+                // can move up 
+                std::cout << "Can move 2 up." << std::endl;
+                int tmp = board[x][y - 1];
+                int tmp1 = board[x + 1][y - 1];
+                board[x][y - 1] = board[x][y];
+                board[x + 1][y  - 1] = 0;
+                board[x][y + h -1] = tmp;
+                board[x + 1][y + h -1] = tmp1;
+                if (h == 2)
+                {
+                    board[x][y + h - 2] = 0;
+                    board[x + 1][y - 1] = 0;
+                }
+                return true;
+            }
+        }
+    }
+
+    // moving right
+    if (x + w1 - 1 < 3)
+    {
+        if (h == 1)
+        {
+            bool force_move_left = false;
+            if (x > 0 && (board[x - 1][y] == 11 || board[x - 1][y] == 12))
+            {
+                // can also move left
+                force_move_left = (corner == 0 || corner == 2);
+            }
+
+            if (!force_move_left && (board[x + w1 ][y] == 11 || board[x + w1][y ] == 12))
+            {
+                std::cout << "Can move right." << std::endl;
+                int tmp = board[x + w1][y ];
+                board[x + 1][y] = board[x][y];
+                board[x][y] = tmp;
+                if (w1 == 2)
+                    board[x + 2][y] = 0;
+                return true;
+            }
+        }
+        if (h == 2)
+        {
+            if ((board[x + w1][y ] == 11 || board[x + w1][y] == 12) &&
+                (board[x + w1][y + 1] == 11 || board[x + w1][y + 1] == 12))
+            {
+                std::cout << "Can move 2 right." << std::endl;
+                int tmp = board[x + w1][y];
+                int tmp1 = board[x + w1][y + 1];
+                board[x + 1][y] = board[x][y];
+                board[x + 1][y + 1] = 0;
+                board[x][y] = tmp;
+                board[x][y + 1] = tmp1;
+                if (w1 == 2)
+                {
+                    board[x + 2][y] = 0;
+                    board[x + 2][y+ 1] = 0;
+                }
+                return true;
+            }
+        }
+    }
+
+    // moving left
+    if (x > 0)
+    {
+        if (h == 1)
+        {
+            if (board[x - 1][y] == 11 || board[x - 1][y] == 12)
+            {
+                std::cout << "Can move left." << std::endl;
+                int tmp = board[x - 1][y];
+                board[x - 1][y] = board[x][y];
+                board[x + w1 -1][y] = tmp;
+                if (w1 == 2)
+                    board[x][y] = 0;
+                return true;
+            }
+        }
+        if (h == 2)
+        {
+            if ((board[x - 1][y] == 11 || board[x - 1][y] == 12) &&
+                (board[x - 1][y + 1] == 11 || board[x - 1][y + 1] == 12))
+            {
+                std::cout << "Can move 2 left." << std::endl;
+                int tmp = board[x -1][y ];
+                int tmp1 = board[x - 1][y + 1];
+                board[x-1][y] = board[x][y];
+                board[x - 1][y + 1] = 0;
+                board[x + w1 -1 ][y] = tmp;
+                board[x + w1 -1 ][y + 1] = tmp1;
+
+                if (w1 == 2)
+                {
+                    board[x][y] = 0;
+                    board[x][y + 1] = 0;
+                }
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 int main()
 {
-    RenderWindow app(VideoMode(1052,1315), "huao rong dao -Puzzle!");
+    RenderWindow app(VideoMode(1052,1315), "huao rong dao - Puzzle!");
 	app.setFramerateLimit(60);
-
-	Texture t;
+    Texture t;
+    Sprite  blockers[13];
     t.loadFromFile("images/huarongdao.png");
- 
-	int w = 263;
-	Sprite zhang_fei;
-    zhang_fei.setTexture(t);
-    zhang_fei.setTextureRect(IntRect(0, 0, w, w*2));
-    Sprite cao_cao;
-    cao_cao.setTexture(t);
-    cao_cao.setTextureRect(IntRect(w, 0, w*2, w * 2));
-    Sprite zhao_yun;
-    zhao_yun.setTexture(t);
-    zhao_yun.setTextureRect(IntRect(w*3, 0, w, w * 2));
+    for (int i = 0; i < 13; ++i)
+        blockers[i].setTexture(t);
 
-    Sprite ma_chao;
-    ma_chao.setTexture(t);
-    ma_chao.setTextureRect(IntRect(0, w*2, w, w * 2));
-    Sprite guan_yu;
-    guan_yu.setTexture(t);
-    guan_yu.setTextureRect(IntRect(w, w * 2, w*2, w));
+    initSpriteBlockers(blockers);
 
-    Sprite huang_zhong;
-    huang_zhong.setTexture(t);
-    huang_zhong.setTextureRect(IntRect(w*3, w * 2, w, w*2));
-
-    Sprite soldier1;
-    soldier1.setTexture(t);
-    soldier1.setTextureRect(IntRect(0, w * 4, w, w ));
-    Sprite soldier2;
-    soldier2.setTexture(t);
-    soldier2.setTextureRect(IntRect(w, w * 3, w, w));
-    Sprite soldier3;
-    soldier3.setTexture(t);
-    soldier3.setTextureRect(IntRect(w*2, w * 3, w, w));
-    Sprite soldier4;
-    soldier4.setTexture(t);
-    soldier4.setTextureRect(IntRect(w * 3, w * 4, w, w));
-
-    Sprite blank1;
-    blank1.setTexture(t);
-    blank1.setTextureRect(IntRect(w, w * 4, w, w));
-    Sprite blank2;
-    blank2.setTexture(t);
-    blank2.setTextureRect(IntRect(w*2, w * 4, w, w));
+    int board[4][5];
+    initBoard(board, blockers);
 
     while (app.isOpen())
     {
@@ -60,65 +325,34 @@ int main()
         {
             if (e.type == Event::Closed)
                 app.close();
-/*
-   			if (e.type == Event::MouseButtonPressed)
-				if (e.key.code == Mouse::Left)
-                  {
-                     Vector2i pos = Mouse::getPosition(app);
-                     int x = pos.x/w + 1;
-                     int y = pos.y/w + 1;
-
-                     int dx=0;
-                     int dy=0;
-
-                     if (grid[x+1][y]==16) {dx=1; dy=0;};
-                     if (grid[x][y+1]==16) {dx=0; dy=1;};
-                     if (grid[x][y-1]==16) {dx=0; dy=-1;};
-                     if (grid[x-1][y]==16) {dx=-1;dy=0;};
-
-                     int n = grid[x][y];
-                     grid[x][y] = 16;
-                     grid[x+dx][y+dy] = n;
-
-					 //animation
-                     sprite[16].move(-dx*w,-dy*w);
-                     float speed=3;
-
-                     for (int i=0;i<w;i+=speed)
-                     {sprite[n].move(speed*dx,speed*dy);
-                      app.draw(sprite[16]);
-                      app.draw(sprite[n]);
-                      app.display(); }
-                  }
-*/
+            if (e.type == Event::MouseButtonPressed)
+            {
+                if (e.key.code == Mouse::Left)
+                {
+                    Vector2i pos = Mouse::getPosition(app);
+                    int x = pos.x / w;
+                    int y = pos.y / w;
+                    std::cout << "x=" << x << " y=" << y << std::endl;
+                    int blockIndex = getBlockerIndex(board, blockers, x, y);
+                    int corner = getBlockerCorner( blockers[blockIndex], pos.x, pos.y);
+                    moveBlock(board, blockers, blockIndex,  corner);
+                }
+            }
         }
 
-       app.clear(Color::White);
-       zhang_fei.setPosition(0, 0);
-       cao_cao.setPosition(w, 0);
-       zhao_yun.setPosition(w*3, 0);
-       ma_chao.setPosition(0, w * 2);
-       guan_yu.setPosition(w, w * 2);
-       huang_zhong.setPosition(w*3, w * 2);
-       soldier1.setPosition(0, w * 4);
-       soldier2.setPosition(w, w * 3);
-       soldier3.setPosition(w*2, w * 3);
-       soldier4.setPosition(w * 3, w * 4);
-       blank1.setPosition(w , w * 4);
-       blank2.setPosition(w*2, w * 4);
-       app.draw(zhang_fei);
-       app.draw(cao_cao);
-       app.draw(zhao_yun);
-       app.draw(ma_chao);
-       app.draw(guan_yu);
-       app.draw(huang_zhong);
-       app.draw(soldier1);
-       app.draw(soldier2);
-       app.draw(soldier3);
-       app.draw(soldier4);
-       app.draw(blank1);
-       app.draw(blank2);
-
+        app.clear(Color::White);
+        for (int i = 0; i < 4; ++i)
+        {
+            for (int j = 0; j < 5; ++j)
+            {
+                if (board[i][j] > 0)
+                {
+                    int blockIndex = board[i][j];
+                    blockers[blockIndex].setPosition(w * i, w * j);
+                    app.draw(blockers[blockIndex]);
+                }
+            }
+        }
        app.display();
     }
 
