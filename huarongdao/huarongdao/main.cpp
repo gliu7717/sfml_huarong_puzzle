@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 
 using namespace sf;
@@ -121,7 +122,12 @@ int getBlockerIndex(int board[4][5], Sprite blockers[], int x, int y)
     return 0;
 }
 
-bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
+// return
+// 1: move down
+// 2: move up
+// 3: move righ
+// 4: move left
+int moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
 {
     Vector2f pos = blockers[blockIndex].getPosition();
     int x = pos.x / w;
@@ -136,13 +142,19 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
     {
         if (w1 == 1)
         {
-            bool force_move_up = false;
+            bool force_move_other_dir = false;
             if (y > 0 && (board[x][y - 1] == 11 || board[x][y - 1] == 12))
             {
                 // can also move up
-                force_move_up = (corner == 0 || corner == 1);
+                force_move_other_dir = (corner == 0 || corner == 1);
             }
-            if (!force_move_up && (board[x][y + h] == 11 || board[x][y + h] == 12))
+            if (!force_move_other_dir && h == 1 && x > 0 && (board[x - 1][y] == 11 || board[x - 1][y] == 12))
+                // can also move left
+                force_move_other_dir = (corner == 0 || corner == 2);
+            if (!force_move_other_dir && h == 1 && x < 3 && (board[x + 1][y] == 11 || board[x + 1][y] == 12))
+                force_move_other_dir = (corner == 1 || corner == 3);
+
+            if (!force_move_other_dir && (board[x][y + h] == 11 || board[x][y + h] == 12))
             {
                 // can move down 
                 std::cout << "Can move down." << std::endl;
@@ -151,7 +163,7 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
                 board[x][y] = tmp;
                 if (h == 2)
                     board[x][y + h] = 0;
-                return true;
+                return 1;
             }
         }
         if (w1 == 2)
@@ -170,7 +182,7 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
 
                 if(h == 2)
                     board[x ][y + h] = 0;
-                return true;
+                return 1;
             }
         }
     }
@@ -180,7 +192,14 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
     {
         if (w1 == 1)
         {
-            if (board[x][y - 1] == 11 || board[x][y - 1] == 12)
+            bool force_move_left_right = false;
+            if (h == 1 && x > 0 && (board[x - 1][y] == 11 || board[x - 1][y] == 12))
+                // can also move left
+                force_move_left_right = (corner == 0 || corner == 2);
+            if(!force_move_left_right && h == 1 && x < 3 && (board[x + 1][y] == 11 || board[x + 1][y] == 12))
+                force_move_left_right = (corner == 1 || corner == 3);
+
+            if (!force_move_left_right && (board[x][y - 1] == 11 || board[x][y - 1] == 12))
             {
                 // can move up 
                 std::cout << "Can move up." << std::endl;
@@ -189,7 +208,7 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
                 board[x][y + h -1] = tmp;
                 if (h == 2)
                     board[x][y] = 0;
-                return true;
+                return 2;
             }
         }
 
@@ -211,7 +230,7 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
                     board[x][y + h - 2] = 0;
                     board[x + 1][y - 1] = 0;
                 }
-                return true;
+                return 2;
             }
         }
     }
@@ -236,7 +255,7 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
                 board[x][y] = tmp;
                 if (w1 == 2)
                     board[x + 2][y] = 0;
-                return true;
+                return 3;
             }
         }
         if (h == 2)
@@ -256,7 +275,7 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
                     board[x + 2][y] = 0;
                     board[x + 2][y+ 1] = 0;
                 }
-                return true;
+                return 3;
             }
         }
     }
@@ -274,7 +293,7 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
                 board[x + w1 -1][y] = tmp;
                 if (w1 == 2)
                     board[x][y] = 0;
-                return true;
+                return 4;
             }
         }
         if (h == 2)
@@ -295,12 +314,49 @@ bool moveBlock(int board[4][5], Sprite blockers[], int blockIndex, int corner)
                     board[x][y] = 0;
                     board[x][y + 1] = 0;
                 }
-                return true;
+                return 4;
             }
         }
     }
 
-    return false;
+    return 0;
+}
+
+void animation(RenderWindow& app, Sprite& blocker, int  move_direction)
+{
+
+    float speed = 10;
+    int dx = 0;
+    int dy = 1;
+
+    switch (move_direction)
+    {
+    case 1:
+        dx = 0;
+        dy = 1;
+        break;
+    case 2:
+        dx = 0;
+        dy = -1;
+        break;
+    case 3:
+        dx = 1;
+        dy = 0;
+        break;
+    case 4:
+        dx = -1;
+        dy = 0;
+        break;
+    default:
+        return;
+    }
+
+    for (int i = 0; i < w; i += speed)
+    {
+        blocker.move(speed * dx, speed * dy);
+        app.draw(blocker);
+        app.display();
+    }
 }
 
 int main()
@@ -318,6 +374,14 @@ int main()
     int board[4][5];
     initBoard(board, blockers);
 
+    //setting sound
+    sf::SoundBuffer buffer;
+    sf::Sound sound;
+    buffer.loadFromFile("sound.wav");
+    sound.setBuffer(buffer);
+    sound.setVolume(50);
+    sound.setPitch(1);
+
     while (app.isOpen())
     {
         Event e;
@@ -334,8 +398,13 @@ int main()
                     int y = pos.y / w;
                     std::cout << "x=" << x << " y=" << y << std::endl;
                     int blockIndex = getBlockerIndex(board, blockers, x, y);
-                    int corner = getBlockerCorner( blockers[blockIndex], pos.x, pos.y);
-                    moveBlock(board, blockers, blockIndex,  corner);
+                    int corner = getBlockerCorner(blockers[blockIndex], pos.x, pos.y);
+                    int move_direction = moveBlock(board, blockers, blockIndex, corner);
+                    if (move_direction > 0)
+                    {
+                        sound.play();
+                        animation(app, blockers[blockIndex], move_direction);
+                    }
                 }
             }
         }
